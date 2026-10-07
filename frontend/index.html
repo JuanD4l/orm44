@@ -1,0 +1,766 @@
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Gestor de Contraseñas</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f2f2f2;
+            padding: 30px;
+        }
+
+        .contenedor {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .formulario {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .formulario h2 {
+            margin-bottom: 20px;
+        }
+
+        .campo {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .guardar {
+            background: #198754;
+            color: white;
+        }
+
+        .cancelar {
+            background: #6c757d;
+            color: white;
+        }
+
+        .actualizar {
+            background: #0d6efd;
+            color: white;
+        }
+
+        .eliminar {
+            background: #dc3545;
+            color: white;
+        }
+
+        .tabla-contenedor {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        .mensaje {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .exito {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <h1>Gestor de Contraseñas</h1>
+
+
+    <!-- FORMULARIO -->
+
+    <div class="formulario">
+
+        <h2 id="tituloFormulario">Agregar contraseña</h2>
+
+        <form id="formulario">
+
+            <input type="hidden" id="id">
+
+            <div class="campo">
+
+                <label for="plataforma">
+                    Plataforma
+                </label>
+
+                <input
+                    type="text"
+                    id="plataforma"
+                    placeholder="Ej: Instagram"
+                    required
+                >
+
+            </div>
+
+
+            <div class="campo">
+
+                <label for="usuario">
+                    Usuario
+                </label>
+
+                <input
+                    type="text"
+                    id="usuario"
+                    placeholder="Ej: Lemus"
+                    required
+                >
+
+            </div>
+
+
+            <div class="campo">
+
+                <label for="contrasena">
+                    Contraseña
+                </label>
+
+                <input
+                    type="text"
+                    id="contrasena"
+                    placeholder="Contraseña"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="guardar"
+                id="botonGuardar"
+            >
+                Guardar
+            </button>
+
+
+            <button
+                type="button"
+                class="cancelar"
+                onclick="cancelarEdicion()"
+                id="botonCancelar"
+                style="display:none;"
+            >
+                Cancelar
+            </button>
+
+        </form>
+
+
+        <div
+            id="mensaje"
+            class="mensaje"
+        ></div>
+
+    </div>
+
+
+    <!-- TABLA -->
+
+    <div class="tabla-contenedor">
+
+        <h2>Contraseñas registradas</h2>
+
+        <br>
+
+        <button
+            class="actualizar"
+            onclick="cargarRegistros()"
+        >
+            🔄 Actualizar registros
+        </button>
+
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>ID</th>
+
+                    <th>Plataforma</th>
+
+                    <th>Usuario</th>
+
+                    <th>Contraseña</th>
+
+                    <th>Acciones</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="tabla">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /*
+        DIRECCIÓN DEL BACKEND
+    */
+
+    const API = "http://127.0.0.1:5000/baul";
+
+
+    /*
+        ELEMENTOS DEL HTML
+    */
+
+    const formulario = document.getElementById("formulario");
+
+    const tabla = document.getElementById("tabla");
+
+    const mensaje = document.getElementById("mensaje");
+
+    const tituloFormulario =
+        document.getElementById("tituloFormulario");
+
+    const botonGuardar =
+        document.getElementById("botonGuardar");
+
+    const botonCancelar =
+        document.getElementById("botonCancelar");
+
+
+    /*
+        MOSTRAR MENSAJE
+    */
+
+    function mostrarMensaje(texto, tipo) {
+
+        mensaje.textContent = texto;
+
+        mensaje.className = "mensaje " + tipo;
+
+        mensaje.style.display = "block";
+
+
+        setTimeout(() => {
+
+            mensaje.style.display = "none";
+
+        }, 3000);
+
+    }
+
+
+    /*
+        GET
+        OBTENER TODOS LOS REGISTROS
+    */
+
+    async function cargarRegistros() {
+
+        try {
+
+            const respuesta = await fetch(API);
+
+
+            if (!respuesta.ok) {
+
+                throw new Error(
+                    "Error al consultar el backend"
+                );
+
+            }
+
+
+            const datos = await respuesta.json();
+
+
+            tabla.innerHTML = "";
+
+
+            datos.forEach(item => {
+
+                const fila = document.createElement("tr");
+
+
+                fila.innerHTML = `
+
+                    <td>${item.id}</td>
+
+                    <td>${item.plataforma}</td>
+
+                    <td>${item.usuario}</td>
+
+                    <td>${item.contrasena}</td>
+
+                    <td>
+
+                        <button
+                            class="actualizar"
+                            onclick="editarRegistro(${item.id})"
+                        >
+                            Editar
+                        </button>
+
+
+                        <button
+                            class="eliminar"
+                            onclick="eliminarRegistro(${item.id})"
+                        >
+                            Eliminar
+                        </button>
+
+                    </td>
+
+                `;
+
+
+                tabla.appendChild(fila);
+
+            });
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            mostrarMensaje(
+                "No se pudo conectar con el backend",
+                "error"
+            );
+
+        }
+
+    }
+
+
+    /*
+        POST
+        CREAR REGISTRO
+    */
+
+    async function crearRegistro() {
+
+        const datos = {
+
+            plataforma:
+                document.getElementById("plataforma").value,
+
+            usuario:
+                document.getElementById("usuario").value,
+
+            contrasena:
+                document.getElementById("contrasena").value
+
+        };
+
+
+        try {
+
+            const respuesta = await fetch(API, {
+
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json"
+
+                },
+
+                body: JSON.stringify(datos)
+
+            });
+
+
+            if (!respuesta.ok) {
+
+                throw new Error(
+                    "Error al crear registro"
+                );
+
+            }
+
+
+            mostrarMensaje(
+                "Registro creado correctamente",
+                "exito"
+            );
+
+
+            formulario.reset();
+
+
+            cargarRegistros();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            mostrarMensaje(
+                "Error al crear el registro",
+                "error"
+            );
+
+        }
+
+    }
+
+
+    /*
+        PUT
+        ACTUALIZAR REGISTRO
+    */
+
+    async function actualizarRegistro(id) {
+
+        const datos = {
+
+            plataforma:
+                document.getElementById("plataforma").value,
+
+            usuario:
+                document.getElementById("usuario").value,
+
+            contrasena:
+                document.getElementById("contrasena").value
+
+        };
+
+
+        try {
+
+            const respuesta = await fetch(
+                `${API}/${id}`,
+                {
+
+                    method: "PUT",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify(datos)
+
+                }
+            );
+
+
+            if (!respuesta.ok) {
+
+                throw new Error(
+                    "Error al actualizar"
+                );
+
+            }
+
+
+            mostrarMensaje(
+                "Registro actualizado correctamente",
+                "exito"
+            );
+
+
+            cancelarEdicion();
+
+
+            cargarRegistros();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            mostrarMensaje(
+                "Error al actualizar el registro",
+                "error"
+            );
+
+        }
+
+    }
+
+
+    /*
+        DETECTAR SUBMIT DEL FORMULARIO
+    */
+
+    formulario.addEventListener(
+        "submit",
+        async function(event) {
+
+            event.preventDefault();
+
+
+            const id =
+                document.getElementById("id").value;
+
+
+            if (id === "") {
+
+                await crearRegistro();
+
+            } else {
+
+                await actualizarRegistro(id);
+
+            }
+
+        }
+    );
+
+
+    /*
+        EDITAR
+    */
+
+    async function editarRegistro(id) {
+
+        try {
+
+            const respuesta =
+                await fetch(`${API}/${id}`);
+
+
+            if (!respuesta.ok) {
+
+                throw new Error(
+                    "No se encontró el registro"
+                );
+
+            }
+
+
+            const item =
+                await respuesta.json();
+
+
+            document.getElementById("id").value =
+                item.id;
+
+
+            document.getElementById("plataforma").value =
+                item.plataforma;
+
+
+            document.getElementById("usuario").value =
+                item.usuario;
+
+
+            document.getElementById("contrasena").value =
+                item.contrasena;
+
+
+            tituloFormulario.textContent =
+                "Editar contraseña";
+
+
+            botonGuardar.textContent =
+                "Actualizar";
+
+
+            botonCancelar.style.display =
+                "inline-block";
+
+
+            window.scrollTo({
+
+                top: 0,
+
+                behavior: "smooth"
+
+            });
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            mostrarMensaje(
+                "Error al cargar el registro",
+                "error"
+            );
+
+        }
+
+    }
+
+
+    /*
+        CANCELAR EDICIÓN
+    */
+
+    function cancelarEdicion() {
+
+        formulario.reset();
+
+
+        document.getElementById("id").value = "";
+
+
+        tituloFormulario.textContent =
+            "Agregar contraseña";
+
+
+        botonGuardar.textContent =
+            "Guardar";
+
+
+        botonCancelar.style.display =
+            "none";
+
+    }
+
+
+    /*
+        DELETE
+        ELIMINAR REGISTRO
+    */
+
+    async function eliminarRegistro(id) {
+
+        const confirmar = confirm(
+            "¿Está seguro de eliminar este registro?"
+        );
+
+
+        if (!confirmar) {
+
+            return;
+
+        }
+
+
+        try {
+
+            const respuesta =
+                await fetch(`${API}/${id}`, {
+
+                    method: "DELETE"
+
+                });
+
+
+            if (!respuesta.ok) {
+
+                throw new Error(
+                    "Error al eliminar"
+                );
+
+            }
+
+
+            mostrarMensaje(
+                "Registro eliminado correctamente",
+                "exito"
+            );
+
+
+            cargarRegistros();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            mostrarMensaje(
+                "Error al eliminar el registro",
+                "error"
+            );
+
+        }
+
+    }
+
+
+    /*
+        CARGAR DATOS AL ABRIR LA PÁGINA
+    */
+
+    cargarRegistros();
+
+</script>
+
+</body>
+
+</html>
