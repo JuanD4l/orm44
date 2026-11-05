@@ -1,172 +1,103 @@
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import mysql.connector
+from backend.app.models import db, Baul
 
 app = Flask(__name__)
-
 CORS(app)
 
-def get_db_connection():
-    conexion = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="gestor_contrasena"
-    )
-    return conexion
+# Configuración de MySQL mediante SQLAlchemy
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    "mysql+pymysql://root:@localhost/gestor_contrasena"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db.init_app(app)
 
 
-@app.route("/", methods=["GET"])
-def inicio():
-    return jsonify({
-        "mensaje": "Backend funcionando correctamente"
-    })
-
-
+# CONSULTAR TODOS LOS REGISTROS
 @app.route("/baul", methods=["GET"])
 def obtener_registros():
-    conexion = get_db_connection()
-    cursor = conexion.cursor(dictionary=True)
+    registros = db.session.execute(
+        db.select(Baul)
+    ).scalars().all()
 
-    cursor.execute("SELECT * FROM baul")
-
-    registros = cursor.fetchall()
-
-    cursor.close()
-    conexion.close()
-
-    return jsonify(registros)
+    return jsonify([registro.to_dict() for registro in registros])
 
 
+# CONSULTAR UN REGISTRO
 @app.route("/baul/<int:id_baul>", methods=["GET"])
 def obtener_registro(id_baul):
-    conexion = get_db_connection()
-    cursor = conexion.cursor(dictionary=True)
-
-    cursor.execute(
-        "SELECT * FROM baul WHERE id_baul = %s",
-        (id_baul,)
-    )
-
-    registro = cursor.fetchone()
-
-    cursor.close()
-    conexion.close()
+    registro = db.session.get(Baul, id_baul)
 
     if registro is None:
-        return jsonify({
-            "mensaje": "Registro no encontrado"
-        }), 404
+        return jsonify({"mensaje": "Registro no encontrado"}), 404
 
-    return jsonify(registro)
+    return jsonify(registro.to_dict())
 
 
+# CREAR REGISTRO
 @app.route("/baul", methods=["POST"])
 def crear_registro():
-    datos = request.get_json()
+    datos = request.get_json(silent=True) or {}
 
-    plataforma = datos["Plataforma"]
-    usuario = datos["usuario"]
-    clave = datos["clave"]
+    plataforma = datos.get("Plataforma", "").strip()
+    usuario = datos.get("usuario", "").strip()
+    clave = datos.get("clave", "").strip()
 
-    conexion = get_db_connection()
-    cursor = conexion.cursor()
+    if not plataforma or not usuario or not clave:
+        return jsonify({"mensaje": "Todos los campos son obligatorios"}), 400
 
-    sql = """
-        INSERT INTO baul (Plataforma, usuario, clave)
-        VALUES (%s, %s, %s)
-    """
-
-    valores = (
-        plataforma,
-        usuario,
-        clave
+    nuevo = Baul(
+        Plataforma=plataforma,
+        usuario=usuario,
+        clave=clave
     )
 
-    cursor.execute(sql, valores)
+    db.session.add(nuevo)
+    db.session.commit()
 
-    conexion.commit()
-
-    cursor.close()
-    conexion.close()
-
-    return jsonify({
-        "mensaje": "Registro creado correctamente"
-    }), 201
+    return jsonify({"mensaje": "Registro creado correctamente"}), 201
 
 
+# ACTUALIZAR REGISTRO
 @app.route("/baul/<int:id_baul>", methods=["PUT"])
 def actualizar_registro(id_baul):
-    datos = request.get_json()
+    registro = db.session.get(Baul, id_baul)
 
-    plataforma = datos["Plataforma"]
-    usuario = datos["usuario"]
-    clave = datos["clave"]
+    if registro is None:
+        return jsonify({"mensaje": "Registro no encontrado"}), 404
 
-    conexion = get_db_connection()
-    cursor = conexion.cursor()
+    datos = request.get_json(silent=True) or {}
 
-    sql = """
-        UPDATE baul
-        SET Plataforma = %s,
-            usuario = %s,
-            clave = %s
-        WHERE id_baul = %s
-    """
+    plataforma = datos.get("Plataforma", "").strip()
+    usuario = datos.get("usuario", "").strip()
+    clave = datos.get("clave", "").strip()
 
-    valores = (
-        plataforma,
-        usuario,
-        clave,
-        id_baul
-    )
+    if not plataforma or not usuario or not clave:
+        return jsonify({"mensaje": "Todos los campos son obligatorios"}), 400
 
-    cursor.execute(sql, valores)
+    registro.Plataforma = plataforma
+    registro.usuario = usuario
+    registro.clave = clave
 
-    conexion.commit()
+    db.session.commit()
 
-    if cursor.rowcount == 0:
-        cursor.close()
-        conexion.close()
-
-        return jsonify({
-            "mensaje": "Registro no encontrado"
-        }), 404
-
-    cursor.close()
-    conexion.close()
-
-    return jsonify({
-        "mensaje": "Registro actualizado correctamente"
-    })
+    return jsonify({"mensaje": "Registro actualizado correctamente"})
 
 
+# ELIMINAR REGISTRO
 @app.route("/baul/<int:id_baul>", methods=["DELETE"])
 def eliminar_registro(id_baul):
-    conexion = get_db_connection()
-    cursor = conexion.cursor()
+    registro = db.session.get(Baul, id_baul)
 
-    cursor.execute(
-        "DELETE FROM baul WHERE id_baul = %s",
-        (id_baul,)
-    )
+    if registro is None:
+        return jsonify({"mensaje": "Registro no encontrado"}), 404
 
-    conexion.commit()
+    db.session.delete(registro)
+    db.session.commit()
 
-    if cursor.rowcount == 0:
-        cursor.close()
-        conexion.close()
-
-        return jsonify({
-            "mensaje": "Registro no encontrado"
-        }), 404
-
-    cursor.close()
-    conexion.close()
-
-    return jsonify({
-        "mensaje": "Registro eliminado correctamente"
-    })
+    return jsonify({"mensaje": "Registro eliminado correctamente"})
 
 
 if __name__ == "__main__":
